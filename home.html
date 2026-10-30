@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Women Safety Alert System</title>
+</head>
+
+<body>
+
+    <h1>🚨 Women Safety Alert System</h1>
+
+    <textarea id="inputText" placeholder="Type or simulate voice input..."></textarea>
+    <br><br>
+
+    <button onclick="checkAlert()">Check Alert</button>
+
+    <p id="result"></p>
+    <p id="location"></p>
+    <p id="alertMsg"></p>
+
+    <audio id="alarmsound" src="alarmsound.mp3"></audio>
+
+    <video id="video" width="300" height="200" autoplay></video>
+    <br>
+    <canvas id="canvas" width="300" height="200" style="display:none;"></canvas>
+    <br>
+    <img id="photo" alt="Captured Image will appear here">
+
+    <script>
+        // Start camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function (stream) {
+                document.getElementById("video").srcObject = stream;
+            })
+            .catch(function () {
+                console.log("Camera access denied");
+            });
+
+        function checkAlert() {
+            let text = document.getElementById("inputText").value.toLowerCase();
+
+            let keywords = ["help", "danger", "save me", "emergency"];
+            let isAlert = false;
+
+            for (let i = 0; i < keywords.length; i++) {
+                if (text.includes(keywords[i])) {
+                    isAlert = true;
+                    break;
+                }
+            }
+
+            let result = document.getElementById("result");
+            let sound = document.getElementById("alarmsound");
+
+            if (isAlert) {
+                result.innerText = "🚨 ALERT DETECTED! Sending help...";
+
+                sound.currentTime = 0;
+                sound.play().catch(() => console.log("Sound blocked"));
+
+                // 📸 Capture Image
+                let video = document.getElementById("video");
+                let canvas = document.getElementById("canvas");
+                let photo = document.getElementById("photo");
+
+                let context = canvas.getContext("2d");
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                photo.src = canvas.toDataURL("image/png");
+
+                // 📍 Get Location + SEND EMAIL HERE
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            let lat = position.coords.latitude;
+                            let lon = position.coords.longitude;
+
+                            document.getElementById("location").innerText =
+                                "📍 Location: " + lat + ", " + lon;
+
+                            // ✅ SEND DATA TO BACKEND (FIXED)
+                            fetch("http://127.0.0.1:5000/send-alert", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    location: lat + ", " + lon
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                document.getElementById("alertMsg").innerText = data.status;
+                            });
+                        },
+                        function () {
+                            document.getElementById("location").innerText =
+                                "❌ Unable to retrieve location.";
+                        }
+                    );
+                } else {
+                    document.getElementById("location").innerText =
+                        "❌ Geolocation not supported.";
+                }
+
+            } else {
+                result.innerText = "✅ No danger detected.";
+                document.getElementById("location").innerText = "";
+                document.getElementById("alertMsg").innerText = "";
+            }
+        }
+    </script>
+
+</body>
+
+</html>
